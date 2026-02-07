@@ -1,14 +1,24 @@
 // app/api/recognize/route.ts
 import { NextResponse } from 'next/server';
 
-const GROK_API_URL = 'https://api.x.ai/v1/chat/completions'; // 2026 年 Grok API 端点（请确认最新文档）
+const GROK_API_URL = 'https://api.x.ai/v1/chat/completions';
 
 export async function POST(req: Request) {
   try {
+    console.log('Recognize request received');
+
     const { imageUrl, mode } = await req.json();
 
     if (!imageUrl) {
+      console.log('No imageUrl provided');
       return NextResponse.json({ error: 'No image URL' }, { status: 400 });
+    }
+
+    console.log('Image URL:', imageUrl, 'Mode:', mode);
+
+    if (!process.env.GROK_API_KEY) {
+      console.error('GROK_API_KEY missing');
+      return NextResponse.json({ error: 'Grok API key missing' }, { status: 500 });
     }
 
     const prompt = mode === 'movie'
@@ -28,6 +38,8 @@ export async function POST(req: Request) {
            "info": "基本信息、出道年份、代表作品等（150字内）"
          }`;
 
+    console.log('Calling Grok API with prompt length:', prompt.length);
+
     const response = await fetch(GROK_API_URL, {
       method: 'POST',
       headers: {
@@ -35,7 +47,7 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${process.env.GROK_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'grok-beta', // 或最新模型名，如 grok-2-vision 等，请查官方文档
+        model: 'grok-beta', // 或 'grok-2-vision' 等，确认你的模型支持图像
         messages: [
           {
             role: 'user',
@@ -50,29 +62,33 @@ export async function POST(req: Request) {
       }),
     });
 
+    console.log('Grok API response status:', response.status);
+
     if (!response.ok) {
-      const err = await response.text();
-      throw new Error(`Grok API error: ${err}`);
+      const errText = await response.text();
+      console.error('Grok API error:', response.status, errText);
+      throw new Error(`Grok API error: ${response.status} - ${errText}`);
     }
 
     const data = await response.json();
+    console.log('Grok response data received');
+
     const content = data.choices?.[0]?.message?.content;
+    if (!content) throw new Error('No content from Grok');
 
-    if (!content) throw new Error('No response from Grok');
-
-    // 尝试解析 JSON（Grok 有时会加多余文字）
     let jsonStr = content;
     if (jsonStr.includes('```json')) {
-      jsonStr = jsonStr.split('```json')[1].split('```')[0].trim();
+      jsonStr = jsonStr.split('```json')[1]?.split('```')[0]?.trim() || jsonStr;
     }
 
     const parsed = JSON.parse(jsonStr.trim());
+    console.log('Parsed result:', parsed);
 
     return NextResponse.json(parsed);
   } catch (error: any) {
-    console.error(error);
+    console.error('Recognize failed:', error.message, error.stack);
     return NextResponse.json(
-      { error: error.message || '识别失败' },
+      { error: error.message || 'Recognition failed - check Vercel logs' },
       { status: 500 }
     );
   }
