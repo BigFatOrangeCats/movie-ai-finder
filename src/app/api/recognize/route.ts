@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         'Authorization': `Bearer ${process.env.GROK_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'grok-beta', // 或 'grok-2-vision' 等，确认你的模型支持图像
+        model: 'grok-4-fast-reasoning', // 或 'grok-2-vision' 等，确认你的模型支持图像首选：grok-4-fast-reasoning 或 grok-4-1-fast-reasoning备选：grok-4-fast-non-reasoning（如果不需要太复杂的推理）
         messages: [
           {
             role: 'user',
