@@ -2,27 +2,29 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, Image as ImageIcon, X, Film, User, Trash2, QrCode } from "lucide-react";
+import { Upload, Image as ImageIcon, X, Film, User, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import Image from "next/image";
-import * as QRCodeLib from 'qrcode.react';
-
-import { QRCodeSVG } from 'qrcode.react';   // ← 用这个（SVG 推荐，更灵活）
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function Home() {
   const [image, setImage] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [mode, setMode] = useState<"actor" | "movie">("movie");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [remainingUses, setRemainingUses] = useState<number>(5); // 默认每天5次
+
+  // 持久化结果：分别存电影和演员的结果
+  const [movieResult, setMovieResult] = useState<any>(null);
+  const [actorResult, setActorResult] = useState<any>(null);
+
+  const [remainingUses, setRemainingUses] = useState<number>(5);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 每天重置使用次数（localStorage 简单实现）
+  // 每天重置使用次数
   useEffect(() => {
     const today = new Date().toDateString();
     const stored = localStorage.getItem("usage");
@@ -46,6 +48,26 @@ export default function Home() {
     setRemainingUses(Math.max(0, 5 - data.count));
   };
 
+  // 页面加载时，从 localStorage 恢复结果
+  useEffect(() => {
+    const savedMovie = localStorage.getItem('lastMovieResult');
+    if (savedMovie) setMovieResult(JSON.parse(savedMovie));
+
+    const savedActor = localStorage.getItem('lastActorResult');
+    if (savedActor) setActorResult(JSON.parse(savedActor));
+  }, []);
+
+  // 保存结果到 localStorage
+  const saveResult = (mode: "movie" | "actor", data: any) => {
+    if (mode === "movie") {
+      setMovieResult(data);
+      localStorage.setItem('lastMovieResult', JSON.stringify(data));
+    } else {
+      setActorResult(data);
+      localStorage.setItem('lastActorResult', JSON.stringify(data));
+    }
+  };
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -55,7 +77,7 @@ export default function Home() {
     }
     setImage(file);
     setPreview(URL.createObjectURL(file));
-    setResult(null); // 新图片清空旧结果
+    // 新图片不自动清空旧结果（按需求保持）
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -64,7 +86,6 @@ export default function Home() {
     if (file && file.type.startsWith("image/")) {
       setImage(file);
       setPreview(URL.createObjectURL(file));
-      setResult(null);
     } else {
       toast.error("请拖入图片文件");
     }
@@ -77,7 +98,10 @@ export default function Home() {
   const clearImage = () => {
     setImage(null);
     setPreview(null);
-    setResult(null);
+    setMovieResult(null);
+    setActorResult(null);
+    localStorage.removeItem('lastMovieResult');
+    localStorage.removeItem('lastActorResult');
   };
 
   const handleSearch = async () => {
@@ -93,7 +117,6 @@ export default function Home() {
 
     setLoading(true);
     try {
-      // 第一步：上传图片到 Vercel Blob（或你自己的存储）
       const formData = new FormData();
       formData.append("file", image);
 
@@ -101,18 +124,22 @@ export default function Home() {
       if (!uploadRes.ok) throw new Error("上传失败");
       const { url: imageUrl } = await uploadRes.json();
 
-      // 第二步：调用 Grok 识别
       const recognizeRes = await fetch("/api/recognize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageUrl, mode }),
       });
 
-      if (!recognizeRes.ok) throw new Error("识别失败");
+      if (!recognizeRes.ok) {
+        const err = await recognizeRes.json();
+        throw new Error(err.error || "识别失败");
+      }
+
       const data = await recognizeRes.json();
 
-      setResult(data);
-      updateUsage(); // 成功后扣次数
+      // 保存结果
+      saveResult(mode, data);
+      updateUsage();
       toast.success("识别成功！");
     } catch (err: any) {
       toast.error(err.message || "识别失败，请重试");
@@ -197,7 +224,7 @@ export default function Home() {
 
             {preview && (
               <div className="mt-8">
-                <Tabs defaultValue="movie" className="w-full" onValueChange={(v) => setMode(v as any)}>
+                <Tabs defaultValue="movie" className="w-full" value={mode} onValueChange={(v) => setMode(v as any)}>
                   <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="movie">
                       <Film className="mr-2 h-4 w-4" />
@@ -233,47 +260,88 @@ export default function Home() {
         </Card>
 
         {/* 结果展示区 */}
-        {result && (
-          <Card className="mt-10 border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-            <CardContent className="p-8">
-              {mode === "movie" ? (
-                <>
-                  <h2 className="text-2xl font-bold mb-4">{result.title || "未知电影"}</h2>
-                  {result.year && <p className="text-muted-foreground mb-2">({result.year})</p>}
-                  {result.rating && (
-                    <div className="flex items-center gap-2 mb-4">
-                      <span className="text-yellow-500 font-bold text-xl">{result.rating}</span>
-                    </div>
-                  )}
-                  {result.actors?.length > 0 && (
-                    <p className="mb-4"><strong>主演：</strong> {result.actors.join("、")}</p>
-                  )}
-                  {result.description && <p className="text-muted-foreground">{result.description}</p>}
-                </>
-              ) : (
-                <>
-                  <h2 className="text-2xl font-bold mb-4">{result.name || "未知演员"}</h2>
-                  {result.info && (
-                    <>
-                      <p className="font-medium mt-4">演员信息：</p>
-                      <p className="mt-2 text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                        {result.info}
-                      </p>
-                    </>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
-        )}
+        <div className="mt-10">
+          {mode === "movie" && movieResult && (
+            <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+              <CardContent className="p-8">
+                <div className="space-y-4 text-lg">
+                  <div>
+                    <strong>电影名称：</strong> {movieResult.title || "暂无"}
+                  </div>
+                  <div>
+                    <strong>电影评分：</strong>
+                    {movieResult.rating ? (
+                      <span className="text-yellow-500">
+                        {'★'.repeat(Math.floor(Number(movieResult.rating) || 0))}
+                        {'☆'.repeat(5 - Math.floor(Number(movieResult.rating) || 0))}
+                      </span>
+                    ) : "暂无"}
+                  </div>
+                  <div>
+                    <strong>电影演员：</strong> {movieResult.actors?.join('、') || "暂无"}
+                  </div>
+                  <div>
+                    <strong>观看链接：</strong> {movieResult.watchLinks?.join('、') || "暂无"}
+                  </div>
+                  <div>
+                    <strong>下载链接：</strong> {movieResult.downloadLinks?.join('、') || "暂无"}
+                  </div>
+                  <div>
+                    <strong>下载种子：</strong> {movieResult.torrent || "暂无"}
+                  </div>
+                  <div>
+                    <strong>电影信息：</strong> {movieResult.description || "暂无"}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-      {/* Telegram 二维码 + 引导 */}
+          {mode === "actor" && actorResult && (
+            <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+              <CardContent className="p-8">
+                <div className="space-y-4 text-lg">
+                  <div>
+                    <strong>演员名称：</strong> {actorResult.name || "暂无"}
+                  </div>
+                  <div>
+                    <strong>演员信息：</strong>
+                    <p className="mt-2 text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {actorResult.info || "暂无"}
+                    </p>
+                  </div>
+                  <div>
+                    <strong>主要参演电影：</strong>
+                    <ul className="list-disc pl-6 mt-2 space-y-2">
+                      {actorResult.movies?.length > 0 ? (
+                        actorResult.movies.map((movie: string, index: number) => (
+                          <li key={index}>{movie}</li>
+                        ))
+                      ) : (
+                        <li>暂无</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* 无结果时的占位 */}
+          {((mode === "movie" && !movieResult) || (mode === "actor" && !actorResult)) && preview && (
+            <div className="text-center text-muted-foreground py-12">
+              点击上方按钮开始识别
+            </div>
+          )}
+        </div>
+
+        {/* Telegram 二维码 */}
         <div className="mt-12 text-center">
           <div className="inline-block p-6 bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-200 dark:border-slate-700">
             <QRCodeSVG
-              value="https://t.me/你的机器人用户名"  // 改成你真实的 bot 链接
+              value="https://t.me/你的机器人用户名"
               size={160}
-              level="H"           // 纠错级别：L/M/Q/H，H 最强
+              level="H"
               fgColor="#000000"
               bgColor="transparent"
             />
