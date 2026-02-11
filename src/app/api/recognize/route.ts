@@ -21,22 +21,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Grok API key missing' }, { status: 500 });
     }
 
-    const prompt = mode === 'movie'
-      ? `You are an expert movie recognition AI. Analyze this movie poster or screenshot.
-         Return structured JSON only:
-         {
-           "title": "电影名称（原名和中文译名）",
-           "year": "年份",
-           "rating": "豆瓣/IMDB评分（如果知道）",
-           "actors": ["演员1", "演员2", ...],
-           "description": "简短剧情或特点描述（50字内）"
-         }`
-      : `You are an expert actor/actress recognition AI. Analyze this photo.
-         Return structured JSON only:
-         {
-           "name": "演员中文名 / 英文名",
-           "info": "基本信息、出道年份、代表作品等（150字内）"
-         }`;
+  const prompt = mode === 'movie' 
+      ? `你是一个专业的电影识别专家。请分析这张图片（电影海报、截图或剧照），并以严格的 JSON 格式返回以下信息。所有字段必须存在，即使找不到也写 "暂无" 或空数组 []。不要添加额外文字，只返回纯 JSON。
+
+    {
+      "title": "电影完整名称（原名 + 中文译名）",
+      "year": "上映年份",
+      "rating": "评分（豆瓣/IMDB 平均分，数字 1-10，如果没有写 0）",
+      "actors": ["演员1", "演员2", ...] 或 [],
+      "watchLinks": ["观看链接1", "观看链接2", ...] 或 ["暂无"],
+      "downloadLinks": ["下载链接1", "下载链接2", ...] 或 ["暂无"],
+      "torrent": "磁力链接或BT种子（如果知道，写完整链接，否则 '暂无')",
+      "description": "电影简介或特点描述（100字以内）"
+    }`
+      : `你是一个专业的演员/女优识别专家。请分析这张图片（演员照片或截图），并以严格的 JSON 格式返回以下信息。所有字段必须存在，即使找不到也写 "暂无" 或空数组 []。不要添加额外文字，只返回纯 JSON。
+
+    {
+      "name": "演员完整名称（中文 / 英文 / 艺名）",
+      "info": "演员介绍（出生年月、国籍、出道时间、身高、三围、代表特点等，150字以内）",
+      "movies": ["电影名 (年份)", "电影名 (年份)", ...] 或 []，列出 3-8 部最知名代表作
+    }`;
 
     console.log('Calling Grok API with prompt length:', prompt.length);
 
