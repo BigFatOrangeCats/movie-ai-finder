@@ -50,25 +50,42 @@ export default function Home() {
 
   // 页面加载时，从 localStorage 恢复结果
   useEffect(() => {
-    const savedMovie = localStorage.getItem('lastMovieResult');
-    if (savedMovie) setMovieResult(JSON.parse(savedMovie));
+    // const savedMovie = localStorage.getItem('lastMovieResult');
+    // if (savedMovie) setMovieResult(JSON.parse(savedMovie));
 
-    const savedActor = localStorage.getItem('lastActorResult');
-    if (savedActor) setActorResult(JSON.parse(savedActor));
+    // const savedActor = localStorage.getItem('lastActorResult');
+    // if (savedActor) setActorResult(JSON.parse(savedActor));
   }, []);
 
-  // 保存结果到 localStorage
+  // 保存结果到 sessionStorage（只在当前标签页有效）
   const saveResult = (mode: "movie" | "actor", data: any) => {
     if (mode === "movie") {
       setMovieResult(data);
-      localStorage.setItem('lastMovieResult', JSON.stringify(data));
+      sessionStorage.setItem('lastMovieResult', JSON.stringify(data));
     } else {
       setActorResult(data);
-      localStorage.setItem('lastActorResult', JSON.stringify(data));
+      sessionStorage.setItem('lastActorResult', JSON.stringify(data));
     }
   };
 
+  // 当切换标签时，从 sessionStorage 恢复当前标签的结果（如果有）
+  useEffect(() => {
+    if (mode === "movie") {
+      const saved = sessionStorage.getItem('lastMovieResult');
+      if (saved) setMovieResult(JSON.parse(saved));
+    } else if (mode === "actor") {
+      const saved = sessionStorage.getItem('lastActorResult');
+      if (saved) setActorResult(JSON.parse(saved));
+    }
+  }, [mode]);  // 依赖 mode，切换时检查
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // 上传新图片时自动清空旧结果
+    setMovieResult(null);
+    setActorResult(null);
+    sessionStorage.removeItem('lastMovieResult');
+    sessionStorage.removeItem('lastActorResult');
+
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) {
@@ -81,6 +98,12 @@ export default function Home() {
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    // 上传新图片时自动清空旧结果
+    setMovieResult(null);
+    setActorResult(null);
+    sessionStorage.removeItem('lastMovieResult');
+    sessionStorage.removeItem('lastActorResult');
+    
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith("image/")) {
@@ -100,8 +123,8 @@ export default function Home() {
     setPreview(null);
     setMovieResult(null);
     setActorResult(null);
-    localStorage.removeItem('lastMovieResult');
-    localStorage.removeItem('lastActorResult');
+    sessionStorage.removeItem('lastMovieResult');
+    sessionStorage.removeItem('lastActorResult');
   };
 
   const handleSearch = async () => {
