@@ -298,11 +298,11 @@ export default function Home() {
                 {movieResult ? (
                   <div className="space-y-4 text-lg">
                     <div>
-                      <strong>电影名称：</strong> {movieResult.title || "暂无"}
+                      <strong>电影名称：</strong> {movieResult?.title || "暂无"}
                     </div>
                     <div>
                       <strong>电影评分：</strong>
-                      {movieResult.rating ? (
+                      {movieResult?.rating ? (
                         <span className="text-yellow-500">
                           {'★'.repeat(Math.floor(Number(movieResult.rating) || 0))}
                           {'☆'.repeat(5 - Math.floor(Number(movieResult.rating) || 0))}
@@ -310,19 +310,26 @@ export default function Home() {
                       ) : "暂无"}
                     </div>
                     <div>
-                      <strong>电影演员：</strong> {Array.isArray(movieResult.actors) ? movieResult.actors.join('、') : "暂无"}
+                      <strong>电影演员：</strong> 
+                      {Array.isArray(movieResult?.actors) ? movieResult.actors.join('、') : "暂无"}
                     </div>
                     <div>
-                      <strong>观看链接：</strong> {Array.isArray(movieResult.watchLinks) && movieResult.watchLinks.length > 0 ? movieResult.watchLinks.join('、') : "暂无"}
+                      <strong>观看链接：</strong> 
+                      {Array.isArray(movieResult?.watchLinks) && movieResult.watchLinks.length > 0 
+                        ? movieResult.watchLinks.join('、') 
+                        : "暂无"}
                     </div>
                     <div>
-                      <strong>下载链接：</strong> {Array.isArray(movieResult.downloadLinks) && movieResult.downloadLinks.length > 0 ? movieResult.downloadLinks.join('、') : "暂无"}
+                      <strong>下载链接：</strong> 
+                      {Array.isArray(movieResult?.downloadLinks) && movieResult.downloadLinks.length > 0 
+                        ? movieResult.downloadLinks.join('、') 
+                        : "暂无"}
                     </div>
                     <div>
-                      <strong>下载种子：</strong> {movieResult.torrent || "暂无"}
+                      <strong>下载种子：</strong> {movieResult?.torrent || "暂无"}
                     </div>
                     <div>
-                      <strong>电影信息：</strong> {movieResult.description || "暂无"}
+                      <strong>电影信息：</strong> {movieResult?.description || "暂无"}
                     </div>
                   </div>
                 ) : (
@@ -340,18 +347,18 @@ export default function Home() {
                 {actorResult ? (
                   <div className="space-y-4 text-lg">
                     <div>
-                      <strong>演员名称：</strong> {actorResult.name || "暂无"}
+                      <strong>演员名称：</strong> {actorResult?.name || "暂无"}
                     </div>
                     <div>
                       <strong>演员信息：</strong>
                       <p className="mt-2 text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                        {actorResult.info || "暂无"}
+                        {actorResult?.info || "暂无"}
                       </p>
                     </div>
                     <div>
                       <strong>主要参演电影：</strong>
                       <ul className="list-disc pl-6 mt-2 space-y-2">
-                        {Array.isArray(actorResult.movies) && actorResult.movies.length > 0 ? (
+                        {Array.isArray(actorResult?.movies) && actorResult.movies.length > 0 ? (
                           actorResult.movies.map((movie: string, index: number) => (
                             <li key={index}>{movie}</li>
                           ))
