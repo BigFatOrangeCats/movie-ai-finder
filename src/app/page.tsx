@@ -172,6 +172,17 @@ export default function Home() {
       saveResult(mode, data);
       updateUsage();
       toast.success("识别成功！");
+
+      // 在 handleSearch 的 try 块末尾，saveResult 之后加：
+      saveResult(mode, data);
+      updateUsage();
+      toast.success("识别成功！");
+
+      // 强制延迟渲染（解决 state 异步更新问题）
+      setTimeout(() => {
+        console.log("强制渲染检查 - movieResult:", movieResult);
+        console.log("强制渲染检查 - actorResult:", actorResult);
+      }, 0);
     } catch (err: any) {
       toast.error(err.message || "识别失败，请重试");
     } finally {
@@ -293,101 +304,87 @@ export default function Home() {
         {/* 结果展示区 */}
         <div className="mt-10">
             {mode === "movie" && (
-                <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-                  <CardContent className="p-8">
-                    {(() => {
-                      try {
-                        if (!movieResult) throw new Error("No movie result");
-
-                        const ratingNum = Number(movieResult.rating ?? 0);
-                        const stars = isNaN(ratingNum) || ratingNum < 0 || ratingNum > 10 
-                          ? "暂无" 
-                          : (
+              <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+                <CardContent className="p-8">
+                  {movieResult ? (
+                    <div className="space-y-4 text-lg">
+                      <div><strong>电影名称：</strong> {movieResult.title ?? "暂无"}</div>
+                      <div>
+                        <strong>电影评分：</strong>
+                        {(() => {
+                          const ratingNum = Number(movieResult.rating ?? 0);
+                          if (isNaN(ratingNum) || ratingNum < 0 || ratingNum > 10) return "暂无";
+                          return (
                             <span className="text-yellow-500">
                               {'★'.repeat(Math.floor(ratingNum))}
                               {'☆'.repeat(5 - Math.floor(ratingNum))}
                             </span>
                           );
+                        })()}
+                      </div>
+                      <div>
+                        <strong>电影演员：</strong> 
+                        {Array.isArray(movieResult.actors) && movieResult.actors.length > 0 
+                          ? movieResult.actors.join('、') 
+                          : "暂无"}
+                      </div>
+                      <div>
+                        <strong>观看链接：</strong> 
+                        {Array.isArray(movieResult.watchLinks) && movieResult.watchLinks.length > 0 
+                          ? movieResult.watchLinks.join('、') 
+                          : "暂无"}
+                      </div>
+                      <div>
+                        <strong>下载链接：</strong> 
+                        {Array.isArray(movieResult.downloadLinks) && movieResult.downloadLinks.length > 0 
+                          ? movieResult.downloadLinks.join('、') 
+                          : "暂无"}
+                      </div>
+                      <div><strong>下载种子：</strong> {movieResult.torrent ?? "暂无"}</div>
+                      <div><strong>电影信息：</strong> {movieResult.description ?? "暂无"}</div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-12">
+                      点击上方“找电影”开始识别
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
-                        return (
-                          <div className="space-y-4 text-lg">
-                            <div><strong>电影名称：</strong> {movieResult.title ?? "暂无"}</div>
-                            <div><strong>电影评分：</strong> {stars}</div>
-                            <div>
-                              <strong>电影演员：</strong> 
-                              {Array.isArray(movieResult.actors) ? movieResult.actors.join('、') : "暂无"}
-                            </div>
-                            <div>
-                              <strong>观看链接：</strong> 
-                              {Array.isArray(movieResult.watchLinks) && movieResult.watchLinks.length > 0 
-                                ? movieResult.watchLinks.join('、') 
-                                : "暂无"}
-                            </div>
-                            <div>
-                              <strong>下载链接：</strong> 
-                              {Array.isArray(movieResult.downloadLinks) && movieResult.downloadLinks.length > 0 
-                                ? movieResult.downloadLinks.join('、') 
-                                : "暂无"}
-                            </div>
-                            <div><strong>下载种子：</strong> {movieResult.torrent ?? "暂无"}</div>
-                            <div><strong>电影信息：</strong> {movieResult.description ?? "暂无"}</div>
-                          </div>
-                        );
-                      } catch (e) {
-                        console.error("Movie result render error:", e);
-                        return (
-                          <div className="text-center text-red-500 py-12">
-                            结果加载失败，请清除后重新识别
-                          </div>
-                        );
-                      }
-                    })()}
-                  </CardContent>
-                </Card>
-              )}
-
-              {mode === "actor" && (
-                <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
-                  <CardContent className="p-8">
-                    {(() => {
-                      try {
-                        if (!actorResult) throw new Error("No actor result");
-
-                        return (
-                          <div className="space-y-4 text-lg">
-                            <div><strong>演员名称：</strong> {actorResult.name ?? "暂无"}</div>
-                            <div>
-                              <strong>演员信息：</strong>
-                              <p className="mt-2 text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                                {actorResult.info ?? "暂无"}
-                              </p>
-                            </div>
-                            <div>
-                              <strong>主要参演电影：</strong>
-                              <ul className="list-disc pl-6 mt-2 space-y-2">
-                                {Array.isArray(actorResult.movies) && actorResult.movies.length > 0 ? (
-                                  actorResult.movies.map((movie: string, index: number) => (
-                                    <li key={index}>{movie}</li>
-                                  ))
-                                ) : (
-                                  <li>暂无</li>
-                                )}
-                              </ul>
-                            </div>
-                          </div>
-                        );
-                      } catch (e) {
-                        console.error("Actor result render error:", e);
-                        return (
-                          <div className="text-center text-red-500 py-12">
-                            结果加载失败，请清除后重新识别
-                          </div>
-                        );
-                      }
-                    })()}
-                  </CardContent>
-                </Card>
-              )}
+            {mode === "actor" && (
+              <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
+                <CardContent className="p-8">
+                  {actorResult ? (
+                    <div className="space-y-4 text-lg">
+                      <div><strong>演员名称：</strong> {actorResult.name ?? "暂无"}</div>
+                      <div>
+                        <strong>演员信息：</strong>
+                        <p className="mt-2 text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                          {actorResult.info ?? "暂无"}
+                        </p>
+                      </div>
+                      <div>
+                        <strong>主要参演电影：</strong>
+                        <ul className="list-disc pl-6 mt-2 space-y-2">
+                          {Array.isArray(actorResult.movies) && actorResult.movies.length > 0 ? (
+                            actorResult.movies.map((movie: string, index: number) => (
+                              <li key={index}>{movie}</li>
+                            ))
+                          ) : (
+                            <li>暂无</li>
+                          )}
+                        </ul>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground py-12">
+                      点击上方“找演员”开始识别
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
           {/* 无结果时的占位 */}
           {((mode === "movie" && !movieResult) || (mode === "actor" && !actorResult)) && preview && (
