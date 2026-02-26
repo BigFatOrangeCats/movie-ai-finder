@@ -37,7 +37,15 @@ export default function Home() {
 
     const used = data.count;
     setRemainingUses(Math.max(0, 5 - used));
-  }, []);
+
+     if (mode === "movie") {
+      const saved = sessionStorage.getItem('lastMovieResult');
+      if (saved) setMovieResult(JSON.parse(saved));
+    } else if (mode === "actor") {
+      const saved = sessionStorage.getItem('lastActorResult');
+      if (saved) setActorResult(JSON.parse(saved));
+    }
+  }, [mode]);
 
   const updateUsage = () => {
     const today = new Date().toDateString();
@@ -49,13 +57,13 @@ export default function Home() {
   };
 
   // 页面加载时，从 localStorage 恢复结果
-  useEffect(() => {
+  // useEffect(() => {
     // const savedMovie = localStorage.getItem('lastMovieResult');
     // if (savedMovie) setMovieResult(JSON.parse(savedMovie));
 
     // const savedActor = localStorage.getItem('lastActorResult');
     // if (savedActor) setActorResult(JSON.parse(savedActor));
-  }, []);
+  // }, []);
 
   // 保存结果到 sessionStorage（只在当前标签页有效）
   const saveResult = (mode: "movie" | "actor", data: any) => {
@@ -68,16 +76,16 @@ export default function Home() {
     }
   };
 
-  // 当切换标签时，从 sessionStorage 恢复当前标签的结果（如果有）
-  useEffect(() => {
-    if (mode === "movie") {
-      const saved = sessionStorage.getItem('lastMovieResult');
-      if (saved) setMovieResult(JSON.parse(saved));
-    } else if (mode === "actor") {
-      const saved = sessionStorage.getItem('lastActorResult');
-      if (saved) setActorResult(JSON.parse(saved));
-    }
-  }, [mode]);  // 依赖 mode，切换时检查
+  // // 当切换标签时，从 sessionStorage 恢复当前标签的结果（如果有）
+  // useEffect(() => {
+  //   if (mode === "movie") {
+  //     const saved = sessionStorage.getItem('lastMovieResult');
+  //     if (saved) setMovieResult(JSON.parse(saved));
+  //   } else if (mode === "actor") {
+  //     const saved = sessionStorage.getItem('lastActorResult');
+  //     if (saved) setActorResult(JSON.parse(saved));
+  //   }
+  // }, [mode]);  // 依赖 mode，切换时检查
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     // 上传新图片时自动清空旧结果
