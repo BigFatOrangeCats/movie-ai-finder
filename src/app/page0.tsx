@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Upload, Film, User, Trash2 } from "lucide-react";
+import { Upload, Image as ImageIcon, X, Film, User, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,9 +15,8 @@ export default function Home() {
   const [preview, setPreview] = useState<string | null>(null);
   const [mode, setMode] = useState<"actor" | "movie">("movie");
   const [loading, setLoading] = useState(false);
-  const [hasSearched, setHasSearched] = useState(false); // 新增：是否已搜索过
 
-  // 持久化结果（sessionStorage：刷新/关闭标签自动清空）
+  // 持久化结果：分别存电影和演员的结果
   const [movieResult, setMovieResult] = useState<any>(null);
   const [actorResult, setActorResult] = useState<any>(null);
 
@@ -25,7 +24,9 @@ export default function Home() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 每天重置使用次数（localStorage 永久保存次数）
+  const [hasSearched, setHasSearched] = useState(false);
+
+  // 每天重置使用次数
   useEffect(() => {
     const today = new Date().toDateString();
     const stored = localStorage.getItem("usage");
@@ -38,7 +39,15 @@ export default function Home() {
 
     const used = data.count;
     setRemainingUses(Math.max(0, 5 - used));
-  }, []);
+
+     if (mode === "movie") {
+      const saved = sessionStorage.getItem('lastMovieResult');
+      if (saved) setMovieResult(JSON.parse(saved));
+    } else if (mode === "actor") {
+      const saved = sessionStorage.getItem('lastActorResult');
+      if (saved) setActorResult(JSON.parse(saved));
+    }
+  }, [mode]);
 
   const updateUsage = () => {
     const today = new Date().toDateString();
@@ -49,32 +58,16 @@ export default function Home() {
     setRemainingUses(Math.max(0, 5 - data.count));
   };
 
-  // 切换 mode 时，从 sessionStorage 恢复对应结果（如果存在）
-  useEffect(() => {
-    if (mode === "movie") {
-      const saved = sessionStorage.getItem('lastMovieResult');
-      if (saved) {
-        try {
-          setMovieResult(JSON.parse(saved));
-        } catch (e) {
-          console.error("解析 movieResult 失败", e);
-          sessionStorage.removeItem('lastMovieResult');
-        }
-      }
-    } else if (mode === "actor") {
-      const saved = sessionStorage.getItem('lastActorResult');
-      if (saved) {
-        try {
-          setActorResult(JSON.parse(saved));
-        } catch (e) {
-          console.error("解析 actorResult 失败", e);
-          sessionStorage.removeItem('lastActorResult');
-        }
-      }
-    }
-  }, [mode]);
+  // 页面加载时，从 localStorage 恢复结果
+  // useEffect(() => {
+    // const savedMovie = localStorage.getItem('lastMovieResult');
+    // if (savedMovie) setMovieResult(JSON.parse(savedMovie));
 
-  // 保存结果到 sessionStorage
+    // const savedActor = localStorage.getItem('lastActorResult');
+    // if (savedActor) setActorResult(JSON.parse(savedActor));
+  // }, []);
+
+  // 保存结果到 sessionStorage（只在当前标签页有效）
   const saveResult = (mode: "movie" | "actor", data: any) => {
     if (mode === "movie") {
       setMovieResult(data);
@@ -85,11 +78,21 @@ export default function Home() {
     }
   };
 
+  // // 当切换标签时，从 sessionStorage 恢复当前标签的结果（如果有）
+  // useEffect(() => {
+  //   if (mode === "movie") {
+  //     const saved = sessionStorage.getItem('lastMovieResult');
+  //     if (saved) setMovieResult(JSON.parse(saved));
+  //   } else if (mode === "actor") {
+  //     const saved = sessionStorage.getItem('lastActorResult');
+  //     if (saved) setActorResult(JSON.parse(saved));
+  //   }
+  // }, [mode]);  // 依赖 mode，切换时检查
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // 新图片时清空所有结果
+    // 上传新图片时自动清空旧结果
     setMovieResult(null);
     setActorResult(null);
-    setHasSearched(false);
     sessionStorage.removeItem('lastMovieResult');
     sessionStorage.removeItem('lastActorResult');
 
@@ -101,17 +104,17 @@ export default function Home() {
     }
     setImage(file);
     setPreview(URL.createObjectURL(file));
+    // 新图片不自动清空旧结果（按需求保持）
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    // 新图片时清空结果
+    // 上传新图片时自动清空旧结果
     setMovieResult(null);
     setActorResult(null);
-    setHasSearched(false);
     sessionStorage.removeItem('lastMovieResult');
     sessionStorage.removeItem('lastActorResult');
-
+    
+    e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (file && file.type.startsWith("image/")) {
       setImage(file);
@@ -130,7 +133,6 @@ export default function Home() {
     setPreview(null);
     setMovieResult(null);
     setActorResult(null);
-    setHasSearched(false);
     sessionStorage.removeItem('lastMovieResult');
     sessionStorage.removeItem('lastActorResult');
   };
@@ -167,14 +169,19 @@ export default function Home() {
       }
 
       const data = await recognizeRes.json();
-      console.log("识别返回的原始 data:", data); // 调试：看返回结构
 
+      // 保存结果
       saveResult(mode, data);
       updateUsage();
-      setHasSearched(true); // 标记已搜索
+      setHasSearched(true);
       toast.success("识别成功！");
+
+      // 强制延迟渲染（解决 state 异步更新问题）
+      setTimeout(() => {
+        console.log("强制渲染检查 - movieResult:", movieResult);
+        console.log("强制渲染检查 - actorResult:", actorResult);
+      }, 0);
     } catch (err: any) {
-      console.error("识别错误:", err);
       toast.error(err.message || "识别失败，请重试");
     } finally {
       setLoading(false);
@@ -257,7 +264,7 @@ export default function Home() {
 
             {preview && (
               <div className="mt-8">
-                <Tabs value={mode} className="w-full" onValueChange={(v) => setMode(v as any)}>
+                <Tabs defaultValue="movie" className="w-full" value={mode} onValueChange={(v) => setMode(v as any)}>
                   <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="movie">
                       <Film className="mr-2 h-4 w-4" />
@@ -294,7 +301,7 @@ export default function Home() {
 
         {/* 结果展示区 */}
         <div className="mt-10">
-          {mode === "movie" && (
+            {mode === "movie" && (
             <Card className="border-none shadow-2xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-950">
               <CardContent className="p-8">
                 {hasSearched ? (
