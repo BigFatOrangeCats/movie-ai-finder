@@ -29,7 +29,8 @@ export default function Home() {
   useEffect(() => {
     const today = new Date().toDateString();
     const stored = localStorage.getItem("usage");
-    let data = stored ? JSON.parse(stored) : { date: "", count: 0 };
+    // let data = stored ? JSON.parse(stored) : { date: "", count: 0 };
+    let data = stored ? JSON.parse(stored) : { date: "", count: 50 };
 
     if (data.date !== today) {
       data = { date: today, count: 0 };
@@ -37,7 +38,7 @@ export default function Home() {
     }
 
     const used = data.count;
-    setRemainingUses(Math.max(0, 5 - used));
+    setRemainingUses(Math.max(0, 50 - used));
   }, []);
 
   const updateUsage = () => {
@@ -46,7 +47,7 @@ export default function Home() {
     let data = stored ? JSON.parse(stored) : { date: today, count: 0 };
     data.count = (data.count || 0) + 1;
     localStorage.setItem("usage", JSON.stringify(data));
-    setRemainingUses(Math.max(0, 25 - data.count));
+    setRemainingUses(Math.max(0, 50 - data.count));
   };
 
   // 切换 mode 时，从 sessionStorage 恢复对应结果（如果存在）
