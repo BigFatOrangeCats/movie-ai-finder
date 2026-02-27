@@ -46,7 +46,7 @@ export default function Home() {
     let data = stored ? JSON.parse(stored) : { date: today, count: 0 };
     data.count = (data.count || 0) + 1;
     localStorage.setItem("usage", JSON.stringify(data));
-    setRemainingUses(Math.max(0, 5 - data.count));
+    setRemainingUses(Math.max(0, 25 - data.count));
   };
 
   // 切换 mode 时，从 sessionStorage 恢复对应结果（如果存在）
