@@ -313,7 +313,7 @@ export default function Home() {
                         <strong>电影名称：</strong> {movieResult?.title ?? "暂无"}
                         </div>
                         <div>
-                        <strong>电影评分：</strong>
+                        {/* <strong>电影评分：</strong>
                         {(() => {
                             const ratingNum = Number(movieResult?.rating ?? 0);
                             if (isNaN(ratingNum) || ratingNum < 0 || ratingNum > 10) return "暂无";
@@ -323,7 +323,25 @@ export default function Home() {
                                 {'☆'.repeat(5 - Math.floor(ratingNum))}
                             </span>
                             );
-                        })()}
+                        })()} */}
+                          <strong>电影评分：</strong>
+                            {(() => {
+                              const ratingNum = Number(movieResult?.rating);
+
+                              if (!ratingNum || isNaN(ratingNum) || ratingNum < 0) {
+                                return "暂无";
+                              }
+
+                              // 10 分制转 5 分制
+                              const starCount = Math.round(ratingNum / 2);
+
+                              return (
+                                <span className="text-yellow-500">
+                                  {"★".repeat(starCount)}
+                                  {"☆".repeat(5 - starCount)}
+                                </span>
+                              );
+                            })()}
                         </div>
                         <div>
                         <strong>电影演员：</strong> {Array.isArray(movieResult?.actors) && movieResult.actors.length > 0 ? movieResult.actors.join('、') : "暂无"}
